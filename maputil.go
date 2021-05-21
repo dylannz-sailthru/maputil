@@ -37,19 +37,25 @@ func (t MapTraverser) FindAllWithKey(key string) MapTraversers {
 		return nil
 	}
 
+	return findAllWithKey(t.m, key)
+}
+
+func findAllWithKey(i interface{}, key string) MapTraversers {
 	o := MapTraversers{}
+	switch t := i.(type) {
+	case map[string]interface{}:
+		for k, v := range t {
+			if k == key {
+				o = append(o, MapTraverser{t})
+			}
 
-	for k, v := range t.m {
-		if k == key {
-			o = append(o, t)
+			o = append(o, findAllWithKey(v, key)...)
 		}
-
-		switch m := v.(type) {
-		case map[string]interface{}:
-			o = append(o, MapTraverser{m}.FindAllWithKey(key)...)
+	case []interface{}:
+		for _, v := range t {
+			o = append(o, findAllWithKey(v, key)...)
 		}
 	}
-
 	return o
 }
 

@@ -145,6 +145,11 @@ func TestFindAllWithKey(t *testing.T) {
 			},
 			"some_other_thing": map[string]interface{}{"key": "value"},
 		},
+		"array": []interface{}{
+			map[string]interface{}{
+				"foo": "bar3",
+			},
+		},
 	}
 	tr := NewMapTraverser(input)
 
@@ -152,6 +157,7 @@ func TestFindAllWithKey(t *testing.T) {
 		NewMapTraverser(input["parent"].(map[string]interface{})),
 		NewMapTraverser(input["parent"].(map[string]interface{})["another_child"].(map[string]interface{})),
 		NewMapTraverser(input["parent"].(map[string]interface{})["another_child"].(map[string]interface{})["foo"].(map[string]interface{})),
+		NewMapTraverser(input["array"].([]interface{})[0].(map[string]interface{})),
 	}
 	result := tr.FindAllWithKey("foo")
 	if len(expected) != len(result) {
