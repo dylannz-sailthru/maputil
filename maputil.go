@@ -32,31 +32,39 @@ func (t MapTraverser) Child(keys ...string) MapTraverser {
 	return t
 }
 
-func (t MapTraverser) FindAllWithKey(key string) MapTraversers {
+type FindFn func(k string, value interface{}) bool
+
+func (t MapTraverser) FindAll(fn FindFn) MapTraversers {
 	if t.m == nil {
 		return nil
 	}
 
-	return findAllWithKey(t.m, key)
+	return findAll(t.m, fn)
 }
 
-func findAllWithKey(i interface{}, key string) MapTraversers {
+func findAll(i interface{}, fn FindFn) MapTraversers {
 	o := MapTraversers{}
 	switch t := i.(type) {
 	case map[string]interface{}:
 		for k, v := range t {
-			if k == key {
+			if fn(k, v) {
 				o = append(o, MapTraverser{t})
 			}
 
-			o = append(o, findAllWithKey(v, key)...)
+			o = append(o, findAll(v, fn)...)
 		}
 	case []interface{}:
 		for _, v := range t {
-			o = append(o, findAllWithKey(v, key)...)
+			o = append(o, findAll(v, fn)...)
 		}
 	}
 	return o
+}
+
+func (t MapTraverser) FindAllWithKey(key string) MapTraversers {
+	return t.FindAll(func(k string, value interface{}) bool {
+		return k == key
+	})
 }
 
 func (t MapTraverser) Value(key string, i interface{}) (interface{}, bool) {
