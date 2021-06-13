@@ -32,6 +32,46 @@ func (t MapTraverser) Child(keys ...string) MapTraverser {
 	return t
 }
 
+type SetFn func(k string, value interface{}) (interface{}, bool)
+
+func (t MapTraverser) SetAll(fn SetFn) int {
+	if t.m == nil {
+		return 0
+	}
+
+	return setAll(t.m, fn)
+}
+
+func setAll(i interface{}, fn SetFn) int {
+	o := 0
+	switch t := i.(type) {
+	case map[string]interface{}:
+		for k, v := range t {
+			res, changed := fn(k, v)
+			if changed {
+				t[k] = res
+				o++
+			}
+
+			o += setAll(v, fn)
+		}
+	case []interface{}:
+		for k := range t {
+			switch t[k].(type) {
+			case map[string]interface{}:
+				o += setAll(t[k], fn)
+			default:
+				res, changed := fn("", t[k])
+				if changed {
+					t[k] = res
+					o++
+				}
+			}
+		}
+	}
+	return o
+}
+
 type FindFn func(k string, value interface{}) bool
 
 func (t MapTraverser) FindAll(fn FindFn) MapTraversers {
