@@ -1,7 +1,10 @@
 package maputil_test
 
 import (
+	"encoding/json"
+	"log"
 	"reflect"
+	"strings"
 	"testing"
 
 	. "github.com/dylannz-sailthru/maputil"
@@ -245,6 +248,74 @@ func TestInvalidDeleteStringValue(t *testing.T) {
 		t.Error("expected ok to be true, was false")
 	}
 	if expected != result {
+		t.Errorf("expected value %#v, got: %#v", expected, result)
+	}
+}
+
+func unmarshalJSON(j string) map[string]interface{} {
+	o := map[string]interface{}{}
+	dec := json.NewDecoder(strings.NewReader(j))
+	dec.UseNumber()
+	err := dec.Decode(&o)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return o
+}
+
+func TestSetAll(t *testing.T) {
+	result := unmarshalJSON(`{
+		"foo": 111,
+		"bar": 222.0,
+		"nested": {
+			"foo": 333,
+			"bar": 444.5
+		},
+		"array": [
+			555,
+			666.6,
+			{
+				"foo": 777,
+				"bar": 888.8
+			}
+		]
+	}`)
+
+	tr := NewMapTraverser(result)
+	tr.SetAll(func(k Key, value interface{}) (interface{}, bool) {
+		switch t := value.(type) {
+		case json.Number:
+			i, err := t.Int64()
+			if err != nil {
+				f, err := t.Float64()
+				if err != nil {
+					return t.String(), true
+				}
+				return f, true
+			}
+			return int(i), true
+		default:
+			return t, false
+		}
+	})
+
+	expected := map[string]interface{}{
+		"foo": 111,
+		"bar": 222.0,
+		"nested": map[string]interface{}{
+			"foo": 333,
+			"bar": 444.5,
+		},
+		"array": []interface{}{
+			555,
+			666.6,
+			map[string]interface{}{
+				"foo": 777,
+				"bar": 888.8,
+			},
+		},
+	}
+	if !reflect.DeepEqual(expected, result) {
 		t.Errorf("expected value %#v, got: %#v", expected, result)
 	}
 }
