@@ -32,6 +32,81 @@ func (t MapTraverser) Child(keys ...string) MapTraverser {
 	return t
 }
 
+// Key represents either the index of an array (int) or the key in a map (string).
+type Key struct {
+	v interface{}
+}
+
+func (k Key) IsArray() bool {
+	_, ok := k.v.(int)
+	return ok
+}
+
+func (k Key) IsMap() bool {
+	_, ok := k.v.(string)
+	return ok
+}
+
+func (k Key) Array() int {
+	i, ok := k.v.(int)
+	if !ok {
+		panic("Array() called on non-array key")
+	}
+	return i
+}
+
+func (k Key) Map() string {
+	i, ok := k.v.(string)
+	if !ok {
+		panic("Map() called on non-string key")
+	}
+	return i
+}
+
+type SetFunc func(k Key, value interface{}) (interface{}, bool)
+
+// SetAll traverses all []interface{} and map[string]interface{} types and calls the
+// fn (SetFunc) for each key/value pair. If the SetFunc for a given key/value pair
+// returns bool(true) as its 2nd return value, then said value will be updated to
+// whatever SetFunc returned as the interface{}.
+func (t MapTraverser) SetAll(fn SetFunc) int {
+	if t.m == nil {
+		return 0
+	}
+
+	return setAll(t.m, fn)
+}
+
+func setAll(i interface{}, fn SetFunc) int {
+	o := 0
+	switch t := i.(type) {
+	case map[string]interface{}:
+		for k, v := range t {
+			res, changed := fn(Key{k}, v)
+			if changed {
+				t[k] = res
+				o++
+			}
+
+			o += setAll(v, fn)
+		}
+	case []interface{}:
+		for k := range t {
+			switch t[k].(type) {
+			case map[string]interface{}:
+				o += setAll(t[k], fn)
+			default:
+				res, changed := fn(Key{k}, t[k])
+				if changed {
+					t[k] = res
+					o++
+				}
+			}
+		}
+	}
+	return o
+}
+
 func (t MapTraverser) FindAllWithKey(key string) MapTraversers {
 	if t.m == nil {
 		return nil
